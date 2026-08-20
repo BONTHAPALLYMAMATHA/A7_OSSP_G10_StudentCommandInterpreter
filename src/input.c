@@ -35,13 +35,16 @@ char *read_line(void)
         {
             size *= 2;
 
-            buffer = realloc(buffer, size);
+            char *temp = realloc(buffer, size);
 
-            if (buffer == NULL)
+            if (temp == NULL)
             {
+                free(buffer);
                 fprintf(stderr, "Memory Allocation Failed\n");
                 exit(EXIT_FAILURE);
             }
+
+            buffer = temp;
         }
     }
 }
