@@ -1,0 +1,34 @@
+STUDENT COMMAND INTERPRETER
+
+Project Description:
+Student Command Interpreter is a Linux-based mini shell designed
+to provide academic utilities through a simple command-line
+interface. It allows students to access and manage information
+such as marks, attendance, timetable, student profile, and exam
+details.
+
+Project Objectives:
+- Develop a simple Linux-based mini shell.
+- Implement custom academic commands.
+- Provide quick access to student information.
+- Implement command parsing and execution.
+- Demonstrate basic Linux and shell programming concepts.
+
+Expected Outcomes:
+- A Student Command Interpreter that accepts student-related
+  commands through a command-line interface.
+- Commands for adding, viewing, searching, updating, and deleting
+  student records.
+- Quick and accurate responses for student data management.
+
+Technology Stack:
+- OS: Linux / Ubuntu
+- Language: C
+- Compiler: GCC
+- Interface: Linux Terminal
+
+Team Members:
+2510030245 - Mamatha
+2510030073 - Sreeja
+2510030035 - Anushka
+2510030255 - Manisha
