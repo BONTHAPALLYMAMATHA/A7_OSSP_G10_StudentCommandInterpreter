@@ -1,4 +1,4 @@
-bin/student_shell
+bin/
 *.o
 *.swp
 *.tmp

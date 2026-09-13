@@ -2,14 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
 #include "../include/shell.h"
 #include "../include/input.h"
 #include "../include/parser.h"
+#include "../include/process.h"
 
 
 void display_prompt(void)
@@ -162,36 +161,12 @@ void execute_command(char *args[])
     }
 
 
-    if (strcmp(args[0], "exit") == 0)
-    {
-        return;
-    }
-
-
-    pid_t pid = fork();
-
-    if (pid < 0)
-    {
-        perror("fork");
-        return;
-    }
-
-
-    if (pid == 0)
-    {
-        execvp(args[0], args);
-
-        perror("Command failed");
-        exit(EXIT_FAILURE);
-    }
-
-
-    else
-    {
-        int status;
-
-        waitpid(pid, &status, 0);
-    }
+    /*
+     * Week 4:
+     * External commands are executed by process.c
+     * using fork(), execvp(), and waitpid().
+     */
+    execute(args);
 }
 
 
