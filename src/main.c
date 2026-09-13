@@ -7,6 +7,7 @@
 #include "../include/parser.h"
 #include "../include/process.h"
 #include "../include/builtin.h"
+#include "../include/signals.h"
 
 
 void display_prompt(void)
@@ -62,6 +63,12 @@ int main(void)
 {
     char *line;
     char **tokens;
+
+    /*
+     * Initialize signal handlers before
+     * entering the shell loop.
+     */
+    initialize_signals();
 
     while (1)
     {
