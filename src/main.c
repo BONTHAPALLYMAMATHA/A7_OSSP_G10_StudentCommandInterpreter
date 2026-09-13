@@ -9,6 +9,7 @@
 
 #include "../include/shell.h"
 #include "../include/input.h"
+#include "../include/parser.h"
 
 
 void display_prompt(void)
@@ -18,41 +19,22 @@ void display_prompt(void)
 }
 
 
-void parse_command(char *input, char *args[])
-{
-    int i = 0;
-
-    char *token = strtok(input, " ");
-
-    while (token != NULL && i < MAX_ARGS - 1)
-    {
-        args[i] = token;
-        i++;
-        token = strtok(NULL, " ");
-    }
-
-    args[i] = NULL;
-}
-
-
 void show_help(void)
 {
     printf("\n");
     printf("Student Command Interpreter\n");
     printf("---------------------------\n");
-    printf("pwd              Show current directory\n");
-    printf("ls               List files\n");
-    printf("mkdir <name>     Create directory\n");
-    printf("touch <name>     Create file\n");
-    printf("cat <file>       Display file\n");
-    printf("rm <file>        Delete file\n");
-    printf("cd <directory>   Change directory\n");
-    printf("clear            Clear screen\n");
-    printf("help             Show help\n");
-    printf("exit             Exit shell\n");
-    printf("date             Show date\n");
-    printf("whoami           Show current user\n");
-    printf("uname            Show system information\n");
+    printf("Available commands:\n");
+    printf("  pwd       - Show current directory\n");
+    printf("  ls        - List files and directories\n");
+    printf("  mkdir     - Create a directory\n");
+    printf("  touch     - Create a file\n");
+    printf("  cat       - Display file contents\n");
+    printf("  rm        - Remove a file\n");
+    printf("  cd        - Change directory\n");
+    printf("  clear     - Clear the screen\n");
+    printf("  help      - Show this help message\n");
+    printf("  exit      - Exit the shell\n");
     printf("\n");
 }
 
@@ -74,7 +56,7 @@ void execute_command(char *args[])
 
     if (strcmp(args[0], "clear") == 0)
     {
-        system("clear");
+        printf("\033[H\033[J");
         return;
     }
 
@@ -83,11 +65,9 @@ void execute_command(char *args[])
     {
         if (args[1] == NULL)
         {
-            printf("Usage: cd <directory>\n");
-            return;
+            printf("cd: missing directory\n");
         }
-
-        if (chdir(args[1]) == -1)
+        else if (chdir(args[1]) != 0)
         {
             perror("cd");
         }
@@ -100,17 +80,11 @@ void execute_command(char *args[])
     {
         if (args[1] == NULL)
         {
-            printf("Usage: mkdir <directory_name>\n");
-            return;
+            printf("mkdir: missing directory name\n");
         }
-
-        if (mkdir(args[1], 0755) == -1)
+        else if (mkdir(args[1], 0755) != 0)
         {
             perror("mkdir");
-        }
-        else
-        {
-            printf("Directory '%s' created successfully.\n", args[1]);
         }
 
         return;
@@ -121,20 +95,20 @@ void execute_command(char *args[])
     {
         if (args[1] == NULL)
         {
-            printf("Usage: touch <file_name>\n");
-            return;
-        }
-
-        int fd = open(args[1], O_CREAT | O_WRONLY, 0644);
-
-        if (fd == -1)
-        {
-            perror("touch");
+            printf("touch: missing file name\n");
         }
         else
         {
-            close(fd);
-            printf("File '%s' created successfully.\n", args[1]);
+            int fd = open(args[1], O_CREAT | O_WRONLY, 0644);
+
+            if (fd == -1)
+            {
+                perror("touch");
+            }
+            else
+            {
+                close(fd);
+            }
         }
 
         return;
@@ -145,26 +119,29 @@ void execute_command(char *args[])
     {
         if (args[1] == NULL)
         {
-            printf("Usage: cat <file_name>\n");
-            return;
+            printf("cat: missing file name\n");
         }
-
-        FILE *file = fopen(args[1], "r");
-
-        if (file == NULL)
+        else
         {
-            perror("cat");
-            return;
+            int fd = open(args[1], O_RDONLY);
+
+            if (fd == -1)
+            {
+                perror("cat");
+            }
+            else
+            {
+                char buffer[1024];
+                ssize_t bytes_read;
+
+                while ((bytes_read = read(fd, buffer, sizeof(buffer))) > 0)
+                {
+                    write(STDOUT_FILENO, buffer, bytes_read);
+                }
+
+                close(fd);
+            }
         }
-
-        char ch;
-
-        while ((ch = fgetc(file)) != EOF)
-        {
-            putchar(ch);
-        }
-
-        fclose(file);
 
         return;
     }
@@ -174,24 +151,22 @@ void execute_command(char *args[])
     {
         if (args[1] == NULL)
         {
-            printf("Usage: rm <file_name>\n");
-            return;
+            printf("rm: missing file name\n");
         }
-
-        if (remove(args[1]) == -1)
+        else if (unlink(args[1]) != 0)
         {
             perror("rm");
-        }
-        else
-        {
-            printf("File '%s' deleted successfully.\n", args[1]);
         }
 
         return;
     }
 
 
-    /* Execute normal Linux commands */
+    if (strcmp(args[0], "exit") == 0)
+    {
+        return;
+    }
+
 
     pid_t pid = fork();
 
@@ -206,12 +181,17 @@ void execute_command(char *args[])
     {
         execvp(args[0], args);
 
-        perror("Command execution failed");
+        perror("Command failed");
         exit(EXIT_FAILURE);
     }
 
 
-    waitpid(pid, NULL, 0);
+    else
+    {
+        int status;
+
+        waitpid(pid, &status, 0);
+    }
 }
 
 
@@ -219,29 +199,18 @@ int main(void)
 {
     char *line;
 
-    printf("\n");
-    printf("========================================\n");
-    printf("   Student Command Interpreter v2.0\n");
-    printf("========================================\n");
-    printf("Type 'help' for available commands.\n\n");
-
 
     while (1)
     {
         display_prompt();
 
+
         line = read_line();
+
 
         if (line == NULL)
         {
             printf("\n");
-            break;
-        }
-
-
-        if (strcmp(line, "exit") == 0)
-        {
-            free(line);
             break;
         }
 
@@ -253,17 +222,26 @@ int main(void)
         }
 
 
-        char *args[MAX_ARGS];
+        if (strcmp(line, "exit") == 0)
+        {
+            free(line);
+            break;
+        }
 
-        parse_command(line, args);
 
-        execute_command(args);
+        char **tokens;
+
+        tokens = parse_line(line);
+
+
+        execute_command(tokens);
+
+
+        free_tokens(tokens);
 
         free(line);
     }
 
-
-    printf("Goodbye!\n");
 
     return 0;
 }
