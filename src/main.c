@@ -8,33 +8,13 @@
 #include "../include/process.h"
 #include "../include/builtin.h"
 #include "../include/signals.h"
+#include "../include/pipes.h"
 
 
 void display_prompt(void)
 {
     printf("Student Shell > ");
     fflush(stdout);
-}
-
-
-void show_help(void)
-{
-    printf("\n");
-    printf("Student Command Interpreter\n");
-    printf("---------------------------\n");
-    printf("Available commands:\n");
-    printf("  pwd       - Show current directory\n");
-    printf("  ls        - List files and directories\n");
-    printf("  mkdir     - Create a directory\n");
-    printf("  touch     - Create a file\n");
-    printf("  cat       - Display file contents\n");
-    printf("  rm        - Remove a file\n");
-    printf("  cd        - Change directory\n");
-    printf("  clear     - Clear the screen\n");
-    printf("  help      - Show this help message\n");
-    printf("  env       - Show environment variables\n");
-    printf("  exit      - Exit the shell\n");
-    printf("\n");
 }
 
 
@@ -45,17 +25,26 @@ void execute_command(char *args[])
         return;
     }
 
-    /*
-     * Check whether the command is a built-in command.
-     */
     if (execute_builtin(args) == 0)
     {
-        /*
-         * If it is not built-in, execute it as
-         * an external Linux command.
-         */
         execute(args);
     }
+}
+
+
+void tokenize_command(char *str, char **argv)
+{
+    int i = 0;
+
+    char *token = strtok(str, " \t\r\n");
+
+    while (token != NULL)
+    {
+        argv[i++] = token;
+        token = strtok(NULL, " \t\r\n");
+    }
+
+    argv[i] = NULL;
 }
 
 
@@ -64,10 +53,6 @@ int main(void)
     char *line;
     char **tokens;
 
-    /*
-     * Initialize signal handlers before
-     * entering the shell loop.
-     */
     initialize_signals();
 
     while (1)
@@ -88,6 +73,43 @@ int main(void)
             continue;
         }
 
+        /*
+         * Check whether the command contains a pipe.
+         */
+        if (strchr(line, '|') != NULL)
+        {
+            char *argv1[64];
+            char *argv2[64];
+
+            char *left = strtok(line, "|");
+            char *right = strtok(NULL, "|");
+
+            if (left == NULL || right == NULL)
+            {
+                printf("Invalid pipe command\n");
+                free(line);
+                continue;
+            }
+
+            tokenize_command(left, argv1);
+            tokenize_command(right, argv2);
+
+            if (argv1[0] == NULL || argv2[0] == NULL)
+            {
+                printf("Invalid pipe command\n");
+                free(line);
+                continue;
+            }
+
+            execute_pipe(argv1, argv2);
+
+            free(line);
+            continue;
+        }
+
+        /*
+         * Normal command without pipe.
+         */
         tokens = parse_line(line);
 
         execute_command(tokens);
