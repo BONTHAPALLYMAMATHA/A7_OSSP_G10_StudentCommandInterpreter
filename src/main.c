@@ -9,14 +9,13 @@
 #include "../include/builtin.h"
 #include "../include/signals.h"
 #include "../include/pipes.h"
-
+#include "../include/redirect.h"
 
 void display_prompt(void)
 {
     printf("Student Shell > ");
     fflush(stdout);
 }
-
 
 void execute_command(char *args[])
 {
@@ -27,10 +26,12 @@ void execute_command(char *args[])
 
     if (execute_builtin(args) == 0)
     {
-        execute(args);
+        if (execute_redirection(args) == 0)
+        {
+            execute(args);
+        }
     }
 }
-
 
 void tokenize_command(char *str, char **argv)
 {
@@ -46,7 +47,6 @@ void tokenize_command(char *str, char **argv)
 
     argv[i] = NULL;
 }
-
 
 int main(void)
 {
@@ -74,7 +74,7 @@ int main(void)
         }
 
         /*
-         * Check whether the command contains a pipe.
+         * Check for pipe command.
          */
         if (strchr(line, '|') != NULL)
         {
