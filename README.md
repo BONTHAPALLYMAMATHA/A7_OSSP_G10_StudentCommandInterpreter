@@ -147,3 +147,12 @@ StudentCommandInterpreter/
 - Append redirection (>>)
 - Error redirection (2>)
 - File handling using open(), close(), and dup2()
+
+## Week 10 Features
+
+- POSIX thread support
+- Background monitoring thread
+- pthread_create()
+- pthread_join()
+- Mutex synchronization
+- Race condition demonstration

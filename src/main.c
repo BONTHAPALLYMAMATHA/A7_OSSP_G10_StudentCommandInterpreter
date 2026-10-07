@@ -10,6 +10,7 @@
 #include "../include/signals.h"
 #include "../include/pipes.h"
 #include "../include/redirect.h"
+#include "../include/thread.h"
 
 void display_prompt(void)
 {
@@ -54,6 +55,9 @@ int main(void)
     char **tokens;
 
     initialize_signals();
+
+    run_thread_demo();
+    start_monitor_thread();
 
     while (1)
     {
