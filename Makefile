@@ -10,21 +10,31 @@ SRC = src/main.c \
       src/signals.c \
       src/pipes.c \
       src/redirect.c \
-      src/thread.c
+      src/thread.c \
+      src/jobs.c \
+      src/job_control.c
 
 TARGET = bin/shellforge
+DEADLOCK = bin/deadlock
 
-all: $(TARGET)
+.PHONY: all run clean asan
+
+all: $(TARGET) $(DEADLOCK)
 
 $(TARGET): $(SRC)
 	mkdir -p bin
 	$(CC) $(CFLAGS) $(SRC) $(LDFLAGS) -o $(TARGET)
 
+$(DEADLOCK): src/deadlock.c
+	mkdir -p bin
+	$(CC) $(CFLAGS) src/deadlock.c $(LDFLAGS) -o $(DEADLOCK)
+
 asan:
+	mkdir -p bin
 	$(CC) $(CFLAGS) -fsanitize=address $(SRC) $(LDFLAGS) -o $(TARGET)
 
 run: $(TARGET)
 	./$(TARGET)
 
 clean:
-	rm -rf bin/*
+	rm -f bin/shellforge bin/deadlock

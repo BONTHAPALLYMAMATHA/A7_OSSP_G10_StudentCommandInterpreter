@@ -2,15 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../include/shell.h"
-#include "../include/input.h"
-#include "../include/parser.h"
-#include "../include/process.h"
-#include "../include/builtin.h"
-#include "../include/signals.h"
-#include "../include/pipes.h"
-#include "../include/redirect.h"
-#include "../include/thread.h"
+#include "shell.h"
+#include "input.h"
+#include "parser.h"
+#include "builtin.h"
+#include "signals.h"
+#include "pipes.h"
+#include "redirect.h"
+#include "thread.h"
+#include "job_control.h"
 
 void display_prompt(void)
 {
@@ -18,29 +18,43 @@ void display_prompt(void)
     fflush(stdout);
 }
 
-void execute_command(char *args[])
+static int has_redirection(const char *command)
+{
+    return strchr(command, '>') != NULL ||
+           strchr(command, '<') != NULL;
+}
+
+static void run_shell_command(char **args, const char *command, int background)
 {
     if (args[0] == NULL)
+        return;
+
+    if (execute_builtin(args))
+        return;
+
+    if (background)
     {
+        if (has_redirection(command))
+        {
+            fprintf(stderr,
+                    "Background redirection is not supported yet.\n");
+            return;
+        }
+
+        launch_job(args, command, 1);
         return;
     }
 
-    if (execute_builtin(args) == 0)
-    {
-        if (execute_redirection(args) == 0)
-        {
-            execute(args);
-        }
-    }
+    if (execute_redirection(args) == 0)
+        launch_job(args, command, 0);
 }
 
-void tokenize_command(char *str, char **argv)
+static void tokenize_command(char *str, char **argv)
 {
     int i = 0;
-
     char *token = strtok(str, " \t\r\n");
 
-    while (token != NULL)
+    while (token != NULL && i < 63)
     {
         argv[i++] = token;
         token = strtok(NULL, " \t\r\n");
@@ -55,14 +69,16 @@ int main(void)
     char **tokens;
 
     initialize_signals();
+    init_job_control();
 
     run_thread_demo();
     start_monitor_thread();
 
     while (1)
     {
-        display_prompt();
+        char command[256];
 
+        display_prompt();
         line = read_line();
 
         if (line == NULL)
@@ -71,15 +87,18 @@ int main(void)
             break;
         }
 
-        if (strlen(line) == 0)
+        if (strspn(line, " \t\r\n") == strlen(line))
         {
             free(line);
             continue;
         }
 
         /*
-         * Check for pipe command.
+         * Preserve the original command before tokenization
+         * changes the input buffer.
          */
+        snprintf(command, sizeof(command), "%s", line);
+
         if (strchr(line, '|') != NULL)
         {
             char *argv1[64];
@@ -88,9 +107,10 @@ int main(void)
             char *left = strtok(line, "|");
             char *right = strtok(NULL, "|");
 
-            if (left == NULL || right == NULL)
+            if (left == NULL || right == NULL ||
+                strchr(right, '|') != NULL)
             {
-                printf("Invalid pipe command\n");
+                fprintf(stderr, "Invalid pipe command\n");
                 free(line);
                 continue;
             }
@@ -100,23 +120,37 @@ int main(void)
 
             if (argv1[0] == NULL || argv2[0] == NULL)
             {
-                printf("Invalid pipe command\n");
+                fprintf(stderr, "Invalid pipe command\n");
                 free(line);
                 continue;
             }
 
             execute_pipe(argv1, argv2);
-
             free(line);
             continue;
         }
 
-        /*
-         * Normal command without pipe.
-         */
         tokens = parse_line(line);
 
-        execute_command(tokens);
+        if (tokens == NULL)
+        {
+            free(line);
+            continue;
+        }
+
+        int count = 0;
+        while (tokens[count] != NULL)
+            count++;
+
+        int background = 0;
+
+        if (count > 0 && strcmp(tokens[count - 1], "&") == 0)
+        {
+            tokens[count - 1] = NULL;
+            background = 1;
+        }
+
+        run_shell_command(tokens, command, background);
 
         free_tokens(tokens);
         free(line);
